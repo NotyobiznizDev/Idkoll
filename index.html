@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Depth Dot Demo with Range Slider</title>
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: #000;
+    }
+    #video, #overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      object-fit: cover;
+    }
+    #overlay {
+      pointer-events: none;
+    }
+    /* Slider container at bottom center */
+    .slider-container {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.5);
+      padding: 10px 20px;
+      border-radius: 10px;
+      color: #fff;
+      font-family: sans-serif;
+    }
+    .slider-container input[type="range"] {
+      width: 200px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Live video feed -->
+  <video id="video" autoplay playsinline></video>
+  <!-- Canvas overlay for white dots -->
+  <canvas id="overlay"></canvas>
+
+  <!-- Range slider for depth threshold -->
+  <div class="slider-container">
+    <label for="rangeSlider">Range: </label>
+    <input id="rangeSlider" type="range" min="0" max="1" step="0.01" value="0.3" />
+    <span id="rangeValue">0.30</span>
+  </div>
+
+  <!-- Include TensorFlow.js if using a real model -->
+  <!-- <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script> -->
+
+  <script>
+    // Global threshold for "closest" objects (lower values mean closer)
+    let rangeThreshold = parseFloat(document.getElementById('rangeSlider').value);
+
+    // Update threshold when slider is moved
+    document.getElementById('rangeSlider').addEventListener('input', (e) => {
+      rangeThreshold = parseFloat(e.target.value);
+      document.getElementById('rangeValue').textContent = rangeThreshold.toFixed(2);
+    });
+
+    // Set up camera stream from the user’s device
+    async function setupCamera() {
+      const video = document.getElementById('video');
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment' }
+        });
+        video.srcObject = stream;
+        return new Promise((resolve) => {
+          video.onloadedmetadata = () => { resolve(video); };
+        });
+      } catch (error) {
+        console.error('Error accessing camera:', error);
+      }
+    }
+
+    // (Placeholder) Function to simulate depth estimation.
+    // In a real implementation, you would load and run a ML model here.
+    function simulateDepthEstimation(canvasWidth, canvasHeight) {
+      // For demonstration, return an array of random points.
+      // Each point includes a "depth" value between 0 and 1.
+      const points = [];
+      for (let i = 0; i < 20; i++) {
+        points.push({
+          x: Math.random() * canvasWidth,
+          y: Math.random() * canvasHeight,
+          depth: Math.random()
+        });
+      }
+      return points;
+    }
+
+    async function main() {
+      const video = await setupCamera();
+      const canvas = document.getElementById('overlay');
+      const ctx = canvas.getContext('2d');
+
+      // Adjust canvas to full screen
+      function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
+      window.addEventListener('resize', resizeCanvas);
+      resizeCanvas();
+
+      // Here you would load your TensorFlow.js model, for example:
+      // const model = await tf.loadGraphModel('path/to/model.json');
+
+      // Render loop
+      function render() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // In a real implementation, grab the current video frame and process it through your ML model.
+        // For demonstration, we simulate depth data.
+        const dots = simulateDepthEstimation(canvas.width, canvas.height);
+
+        // Draw dots only for points that are below the current range threshold (i.e., closer objects)
+        dots.forEach(pt => {
+          if (pt.depth < rangeThreshold) {
+            ctx.beginPath();
+            ctx.arc(pt.x, pt.y, 5, 0, 2 * Math.PI);
+            ctx.fillStyle = 'white';
+            ctx.fill();
+          }
+        });
+
+        requestAnimationFrame(render);
+      }
+      render();
+    }
+    main();
+  </script>
+</body>
+</html>
+
